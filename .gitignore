@@ -20,3 +20,6 @@ Derived/
 
 # Credentials
 .netrc
+
+# Claude Code
+.claude/
