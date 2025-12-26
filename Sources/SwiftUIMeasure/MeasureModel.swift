@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// 可测量视图的身份 + 位置
-struct MeasurableItem: Equatable, @unchecked Sendable {
+/// 可测量视图的身份 + 位置锚点
+struct MeasurableItem: Equatable {
     let id: AnyHashable
-    let rect: CGRect
+    let anchor: Anchor<CGRect>
+
+    static func == (lhs: MeasurableItem, rhs: MeasurableItem) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 /// 选中状态 - 数组 + FIFO，消除 first/second 的特殊情况
@@ -35,7 +39,58 @@ struct MeasureSelection {
     }
 }
 
-/// 边缘距离 - 统一返回水平+垂直，不做分支判断
+/// 测量结果 - 兄弟元素或父子元素
+enum MeasureResult {
+    case sibling(EdgeDistance)
+    case parentChild(ParentChildDistance)
+
+    static func between(_ a: CGRect, _ b: CGRect) -> MeasureResult {
+        // 检查父子关系：一个完全包含另一个
+        if a.contains(b) {
+            return .parentChild(ParentChildDistance.calculate(parent: a, child: b))
+        }
+        if b.contains(a) {
+            return .parentChild(ParentChildDistance.calculate(parent: b, child: a))
+        }
+        return .sibling(EdgeDistance.between(a, b))
+    }
+}
+
+/// 父子元素的四边距离
+struct ParentChildDistance {
+    let top: CGFloat
+    let bottom: CGFloat
+    let left: CGFloat
+    let right: CGFloat
+
+    let topLine: (start: CGPoint, end: CGPoint)
+    let bottomLine: (start: CGPoint, end: CGPoint)
+    let leftLine: (start: CGPoint, end: CGPoint)
+    let rightLine: (start: CGPoint, end: CGPoint)
+
+    static func calculate(parent: CGRect, child: CGRect) -> ParentChildDistance {
+        let top = child.minY - parent.minY
+        let bottom = parent.maxY - child.maxY
+        let left = child.minX - parent.minX
+        let right = parent.maxX - child.maxX
+
+        let childMidX = child.midX
+        let childMidY = child.midY
+
+        return ParentChildDistance(
+            top: top,
+            bottom: bottom,
+            left: left,
+            right: right,
+            topLine: (CGPoint(x: childMidX, y: parent.minY), CGPoint(x: childMidX, y: child.minY)),
+            bottomLine: (CGPoint(x: childMidX, y: child.maxY), CGPoint(x: childMidX, y: parent.maxY)),
+            leftLine: (CGPoint(x: parent.minX, y: childMidY), CGPoint(x: child.minX, y: childMidY)),
+            rightLine: (CGPoint(x: child.maxX, y: childMidY), CGPoint(x: parent.maxX, y: childMidY))
+        )
+    }
+}
+
+/// 兄弟元素边缘距离 - 统一返回水平+垂直，不做分支判断
 struct EdgeDistance {
     let horizontal: CGFloat?
     let vertical: CGFloat?

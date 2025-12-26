@@ -4,19 +4,19 @@ import SwiftUI
 struct MeasureOverlayModifier: ViewModifier {
     @Binding var isEnabled: Bool
     @State private var selection = MeasureSelection()
-    @State private var items: [MeasurableItem] = []
 
     func body(content: Content) -> some View {
         content
-            .coordinateSpace(name: measureCoordinateSpace)
-            .onPreferenceChange(MeasurablePreferenceKey.self) { items = $0 }
-            .overlay {
-                if isEnabled {
-                    MeasureCanvas(
-                        items: items,
-                        selection: $selection
-                    )
-                    .allowsHitTesting(true)
+            .overlayPreferenceValue(MeasurablePreferenceKey.self) { items in
+                GeometryReader { proxy in
+                    let rects = items.map { ResolvedItem(id: $0.id, rect: proxy[$0.anchor]) }
+                    if isEnabled {
+                        MeasureCanvas(
+                            items: rects,
+                            selection: $selection
+                        )
+                        .allowsHitTesting(true)
+                    }
                 }
             }
             .onChange(of: isEnabled) { _, newValue in
@@ -25,9 +25,15 @@ struct MeasureOverlayModifier: ViewModifier {
     }
 }
 
+/// 解析后的可测量项（anchor -> rect）
+struct ResolvedItem {
+    let id: AnyHashable
+    let rect: CGRect
+}
+
 /// 测量画布：绘制可点击区域 + 测量线
 struct MeasureCanvas: View {
-    let items: [MeasurableItem]
+    let items: [ResolvedItem]
     @Binding var selection: MeasureSelection
 
     var body: some View {
@@ -51,22 +57,39 @@ struct MeasureCanvas: View {
             if let pair = selection.pair,
                let rectA = items.first(where: { $0.id == pair.0 })?.rect,
                let rectB = items.first(where: { $0.id == pair.1 })?.rect {
-                let distance = EdgeDistance.between(rectA, rectB)
-                drawMeasurementLines(context: &context, distance: distance)
+                let result = MeasureResult.between(rectA, rectB)
+                switch result {
+                case .sibling(let distance):
+                    drawSiblingLines(context: &context, distance: distance)
+                case .parentChild(let distance):
+                    drawParentChildLines(context: &context, distance: distance)
+                }
             }
         }
         .contentShape(Rectangle())
         .onTapGesture { location in
-            if let tapped = items.first(where: { $0.rect.contains(location) }) {
+            // 找到包含点击位置的所有元素
+            let hits = items.filter { $0.rect.contains(location) }
+            // 选择最内层：不包含其他任何命中元素的那个
+            let tapped = hits.first { candidate in
+                !hits.contains { other in
+                    other.id != candidate.id && candidate.rect.contains(other.rect)
+                }
+            }
+            if let tapped {
                 selection.toggle(tapped.id)
             }
         }
     }
 
-    private func drawMeasurementLines(context: inout GraphicsContext, distance: EdgeDistance) {
+    private func drawSiblingLines(context: inout GraphicsContext, distance: EdgeDistance) {
         let lineColor = Color.red
         let textColor = Color.white
         let bgColor = Color.red
+
+        // 当两条线都存在时，标签需要偏移避免重叠
+        let bothExist = distance.horizontal != nil && distance.vertical != nil
+        let labelOffset: CGFloat = bothExist ? 12 : 0
 
         if let h = distance.horizontal, let line = distance.horizontalLine {
             drawMeasureLine(
@@ -76,7 +99,8 @@ struct MeasureCanvas: View {
                 label: formatDistance(h),
                 lineColor: lineColor,
                 textColor: textColor,
-                bgColor: bgColor
+                bgColor: bgColor,
+                labelOffset: CGPoint(x: 0, y: -labelOffset) // 水平线标签往上偏移
             )
         }
 
@@ -88,8 +112,36 @@ struct MeasureCanvas: View {
                 label: formatDistance(v),
                 lineColor: lineColor,
                 textColor: textColor,
-                bgColor: bgColor
+                bgColor: bgColor,
+                labelOffset: CGPoint(x: labelOffset, y: 0) // 垂直线标签往右偏移
             )
+        }
+    }
+
+    private func drawParentChildLines(context: inout GraphicsContext, distance: ParentChildDistance) {
+        let lineColor = Color.orange
+        let textColor = Color.white
+        let bgColor = Color.orange
+
+        // Top
+        if distance.top > 0 {
+            drawMeasureLine(context: &context, from: distance.topLine.start, to: distance.topLine.end,
+                           label: formatDistance(distance.top), lineColor: lineColor, textColor: textColor, bgColor: bgColor)
+        }
+        // Bottom
+        if distance.bottom > 0 {
+            drawMeasureLine(context: &context, from: distance.bottomLine.start, to: distance.bottomLine.end,
+                           label: formatDistance(distance.bottom), lineColor: lineColor, textColor: textColor, bgColor: bgColor)
+        }
+        // Left
+        if distance.left > 0 {
+            drawMeasureLine(context: &context, from: distance.leftLine.start, to: distance.leftLine.end,
+                           label: formatDistance(distance.left), lineColor: lineColor, textColor: textColor, bgColor: bgColor)
+        }
+        // Right
+        if distance.right > 0 {
+            drawMeasureLine(context: &context, from: distance.rightLine.start, to: distance.rightLine.end,
+                           label: formatDistance(distance.right), lineColor: lineColor, textColor: textColor, bgColor: bgColor)
         }
     }
 
@@ -100,7 +152,8 @@ struct MeasureCanvas: View {
         label: String,
         lineColor: Color,
         textColor: Color,
-        bgColor: Color
+        bgColor: Color,
+        labelOffset: CGPoint = .zero
     ) {
         // 主线
         var path = Path()
@@ -113,8 +166,11 @@ struct MeasureCanvas: View {
         drawCap(context: &context, at: start, isHorizontal: isHorizontal, color: lineColor)
         drawCap(context: &context, at: end, isHorizontal: isHorizontal, color: lineColor)
 
-        // 标签
-        let midPoint = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
+        // 标签（带偏移）
+        let midPoint = CGPoint(
+            x: (start.x + end.x) / 2 + labelOffset.x,
+            y: (start.y + end.y) / 2 + labelOffset.y
+        )
         drawLabel(context: &context, text: label, at: midPoint, textColor: textColor, bgColor: bgColor)
     }
 

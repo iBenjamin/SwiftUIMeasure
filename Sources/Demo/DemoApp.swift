@@ -54,6 +54,7 @@ struct ContentView: View {
                 Color.white
 
                 VStack(spacing: 40) {
+                    // 兄弟元素测试
                     HStack(spacing: 60) {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(Color.blue)
@@ -66,22 +67,18 @@ struct ContentView: View {
                             .measurable()
                     }
 
-                    HStack(spacing: 30) {
-                        Circle()
-                            .fill(Color.orange)
-                            .frame(width: 50, height: 50)
-                            .measurable()
-
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.purple)
-                            .frame(width: 120, height: 40)
-                            .measurable()
-
-                        Circle()
-                            .fill(Color.pink)
-                            .frame(width: 70, height: 70)
-                            .measurable()
-                    }
+                    // 父子元素测试
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(width: 200, height: 120)
+                        .measurable()
+                        .overlay(alignment: .bottomTrailing) {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.purple)
+                                .frame(width: 80, height: 50)
+                                .measurable()
+                                .padding(10)
+                        }
 
                     HStack(spacing: 50) {
                         Text("Label A")
