@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+._*
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+*.xccheckout
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Tuist
+Derived/
+
+# Credentials
+.netrc
