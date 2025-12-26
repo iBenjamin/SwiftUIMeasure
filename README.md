@@ -20,7 +20,7 @@ A debug tool for measuring distances between SwiftUI views at runtime.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/anthropics/SwiftUIMeasure.git", from: "1.0.0")
+    .package(url: "https://github.com/iBenjamin/SwiftUIMeasure.git", from: "1.0.0")
 ]
 ```
 
