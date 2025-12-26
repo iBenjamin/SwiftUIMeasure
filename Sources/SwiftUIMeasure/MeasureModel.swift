@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 可测量视图的身份 + 位置
-struct MeasurableItem: Equatable, Sendable {
+struct MeasurableItem: Equatable, @unchecked Sendable {
     let id: AnyHashable
     let rect: CGRect
 }

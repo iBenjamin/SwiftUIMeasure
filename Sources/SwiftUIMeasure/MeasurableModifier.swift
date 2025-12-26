@@ -5,7 +5,7 @@ let measureCoordinateSpace = "com.iBenjamin.swiftui.measure"
 
 /// PreferenceKey 收集所有可测量视图的位置
 struct MeasurablePreferenceKey: PreferenceKey {
-    static var defaultValue: [MeasurableItem] = []
+    nonisolated(unsafe) static var defaultValue: [MeasurableItem] = []
 
     static func reduce(value: inout [MeasurableItem], nextValue: () -> [MeasurableItem]) {
         value.append(contentsOf: nextValue())

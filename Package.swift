@@ -13,7 +13,10 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "SwiftUIMeasure"
+            name: "SwiftUIMeasure",
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency")
+            ]
         ),
         .testTarget(
             name: "SwiftUIMeasureTests",

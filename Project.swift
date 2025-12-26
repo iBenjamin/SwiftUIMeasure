@@ -2,6 +2,11 @@ import ProjectDescription
 
 let project = Project(
     name: "SwiftUIMeasure",
+    settings: .settings(
+        base: [
+            "SWIFT_STRICT_CONCURRENCY": "complete"
+        ]
+    ),
     targets: [
         // Framework
         .target(
@@ -29,7 +34,13 @@ let project = Project(
             sources: ["Sources/Demo/**"],
             dependencies: [
                 .target(name: "SwiftUIMeasure")
-            ]
+            ],
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": "6.0",
+                    "SWIFT_STRICT_CONCURRENCY": "complete"
+                ]
+            )
         ),
         // Tests
         .target(
